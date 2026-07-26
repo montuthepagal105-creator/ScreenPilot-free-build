@@ -1,0 +1,360 @@
+name: Build and verify ScreenPilot
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Private ScreenPilot commit or branch to build
+        required: true
+        default: main
+
+permissions:
+  contents: read
+
+env:
+  SCREENPILOT_REPOSITORY: montuthepagal105-creator/ScreenPilot
+
+jobs:
+  rust-quality:
+    name: Rust quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.SCREENPILOT_REPOSITORY }}
+          ref: ${{ inputs.source_ref }}
+          ssh-key: ${{ secrets.SCREENPILOT_DEPLOY_KEY }}
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Formatting
+        run: cargo fmt --all --check
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Tests
+        run: cargo test --workspace
+      - name: Documentation
+        run: RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
+
+  flutter-quality:
+    name: Flutter quality
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/screenpilot
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.SCREENPILOT_REPOSITORY }}
+          ref: ${{ inputs.source_ref }}
+          ssh-key: ${{ secrets.SCREENPILOT_DEPLOY_KEY }}
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Generate platform wrapper
+        run: flutter create --project-name screenpilot --org ai.screenpilot --platforms=android .
+      - name: Dependencies
+        run: flutter pub get
+      - name: Formatting
+        run: |
+          dart format lib test
+          git diff --exit-code -- lib test
+      - name: Static analysis
+        run: flutter analyze
+      - name: Tests
+        run: flutter test --coverage
+
+  model-host-quality:
+    name: Model host quality
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/model-host
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.SCREENPILOT_REPOSITORY }}
+          ref: ${{ inputs.source_ref }}
+          ssh-key: ${{ secrets.SCREENPILOT_DEPLOY_KEY }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: services/model-host/pyproject.toml
+      - name: Install test dependencies
+        run: pip install -e ".[dev]"
+      - name: Compile
+        run: python -m compileall screenpilot_model_host
+      - name: Tests
+        run: pytest -q
+
+  local-ai:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS real local AI
+            os: macos-14
+            verify_moondream: "1"
+          - name: Windows real local AI
+            os: windows-latest
+            verify_moondream: "0"
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 180
+    defaults:
+      run:
+        working-directory: services/model-host
+    env:
+      UV_PROJECT_ENVIRONMENT: ${{ runner.temp }}/screenpilot-model-host-environment
+      UV_CACHE_DIR: ${{ runner.temp }}/screenpilot-uv-cache
+      UV_PYTHON_INSTALL_DIR: ${{ runner.temp }}/screenpilot-python
+      UV_NO_CONFIG: "1"
+      UV_NO_PROGRESS: "1"
+      UV_HTTP_CONNECT_TIMEOUT: "30"
+      UV_HTTP_TIMEOUT: "120"
+      UV_HTTP_RETRIES: "5"
+      HF_HOME: ${{ runner.temp }}/screenpilot-models/huggingface
+      HF_HUB_DISABLE_TELEMETRY: "1"
+      HF_HUB_DISABLE_XET: "1"
+      HF_HUB_DOWNLOAD_TIMEOUT: "120"
+      HF_HUB_ETAG_TIMEOUT: "30"
+      HF_HUB_VERBOSITY: info
+      PADDLEX_HOME: ${{ runner.temp }}/screenpilot-models/paddlex
+      PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK: "1"
+      PADDLE_PDX_MODEL_SOURCE: bos
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.SCREENPILOT_REPOSITORY }}
+          ref: ${{ inputs.source_ref }}
+          ssh-key: ${{ secrets.SCREENPILOT_DEPLOY_KEY }}
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.11.31"
+          enable-cache: true
+          cache-dependency-glob: |
+            services/model-host/pyproject.toml
+            services/model-host/uv.lock
+      - name: Install packaged dependencies
+        run: >-
+          uv sync
+          --project .
+          --extra ai
+          --python 3.12
+          --managed-python
+          --no-dev
+          --locked
+      - name: Run packaged command with real local models
+        env:
+          SCREENPILOT_VERIFY_MOONDREAM_WEIGHTS: ${{ matrix.verify_moondream }}
+        run: >-
+          uv run
+          --project .
+          --no-sync
+          python tests/verify_ai_install.py
+
+  android:
+    name: Android APK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/screenpilot
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.SCREENPILOT_REPOSITORY }}
+          ref: ${{ inputs.source_ref }}
+          ssh-key: ${{ secrets.SCREENPILOT_DEPLOY_KEY }}
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-ndk
+      - name: Generate Android wrapper
+        run: flutter create --project-name screenpilot --org ai.screenpilot --platforms=android .
+      - name: Build Android Rust core
+        working-directory: .
+        run: |
+          cargo ndk \
+            -t arm64-v8a \
+            -t armeabi-v7a \
+            -t x86_64 \
+            -o packages/screenpilot_capture/android/src/main/jniLibs \
+            build --release -p screenpilot-core
+      - name: Build release APK
+        run: flutter build apk --release --dart-define=SCREENPILOT_DEMO=false
+      - name: Prepare release asset
+        working-directory: .
+        run: |
+          mkdir -p dist
+          cp apps/screenpilot/build/app/outputs/flutter-apk/app-release.apk \
+            dist/ScreenPilot-Android.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-android
+          path: dist/ScreenPilot-Android.apk
+          if-no-files-found: error
+          retention-days: 3
+
+  macos:
+    name: macOS application
+    runs-on: macos-14
+    defaults:
+      run:
+        working-directory: apps/screenpilot
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.SCREENPILOT_REPOSITORY }}
+          ref: ${{ inputs.source_ref }}
+          ssh-key: ${{ secrets.SCREENPILOT_DEPLOY_KEY }}
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-apple-darwin,aarch64-apple-darwin
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Generate macOS wrapper
+        run: flutter create --project-name screenpilot --org ai.screenpilot --platforms=macos .
+      - name: Allow loopback model networking
+        run: |
+          /usr/libexec/PlistBuddy \
+            -c "Set :com.apple.security.app-sandbox false" \
+            macos/Runner/Release.entitlements
+          /usr/libexec/PlistBuddy \
+            -c "Set :com.apple.security.network.client true" \
+            macos/Runner/Release.entitlements ||
+          /usr/libexec/PlistBuddy \
+            -c "Add :com.apple.security.network.client bool true" \
+            macos/Runner/Release.entitlements
+      - name: Build universal Rust core
+        working-directory: .
+        run: |
+          cargo build --release --target aarch64-apple-darwin -p screenpilot-core
+          cargo build --release --target x86_64-apple-darwin -p screenpilot-core
+          mkdir -p target/universal/release
+          lipo -create \
+            target/aarch64-apple-darwin/release/libscreenpilot_core.dylib \
+            target/x86_64-apple-darwin/release/libscreenpilot_core.dylib \
+            -output target/universal/release/libscreenpilot_core.dylib
+      - name: Build Flutter app
+        run: flutter build macos --release --dart-define=SCREENPILOT_DEMO=false
+      - name: Embed core and package app
+        working-directory: .
+        run: |
+          APP="apps/screenpilot/build/macos/Build/Products/Release/screenpilot.app"
+          LIB="$APP/Contents/Frameworks/libscreenpilot_core.dylib"
+          mkdir -p "$APP/Contents/Frameworks" dist
+          cp target/universal/release/libscreenpilot_core.dylib "$LIB"
+          bash packaging/model-host/embed_macos.sh "$APP"
+          codesign --force --sign - "$LIB"
+          codesign --force --sign - "$APP/Contents/Resources/model-host/uv-arm64"
+          codesign --force --sign - "$APP/Contents/Resources/model-host/uv-x64"
+          codesign --force --deep --sign - "$APP"
+          ditto -c -k --sequesterRsrc --keepParent "$APP" \
+            dist/ScreenPilot-macOS.app.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-macos
+          path: dist/ScreenPilot-macOS.app.zip
+          if-no-files-found: error
+          retention-days: 3
+
+  windows:
+    name: Windows installer
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: apps/screenpilot
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.SCREENPILOT_REPOSITORY }}
+          ref: ${{ inputs.source_ref }}
+          ssh-key: ${{ secrets.SCREENPILOT_DEPLOY_KEY }}
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Generate Windows wrapper
+        run: flutter create --project-name screenpilot --org ai.screenpilot --platforms=windows .
+      - name: Build Rust core
+        working-directory: .
+        run: cargo build --release -p screenpilot-core
+      - name: Build Flutter app
+        run: flutter build windows --release --dart-define=SCREENPILOT_DEMO=false
+      - name: Embed Rust core
+        shell: pwsh
+        working-directory: .
+        run: |
+          Copy-Item `
+            "target\release\screenpilot_core.dll" `
+            "apps\screenpilot\build\windows\x64\runner\Release\screenpilot_core.dll"
+          & "packaging\model-host\embed_windows.ps1" `
+            -AppDirectory "apps\screenpilot\build\windows\x64\runner\Release"
+      - name: Build setup executable
+        shell: pwsh
+        working-directory: .
+        run: |
+          choco install innosetup --no-progress -y
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" `
+            "packaging\windows\screenpilot.iss"
+          if (-not (Test-Path "dist\ScreenPilot-Windows-Setup.exe")) {
+            throw "The Windows installer was not created."
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-windows
+          path: dist/ScreenPilot-Windows-Setup.exe
+          if-no-files-found: error
+          retention-days: 3
+
+  package:
+    name: Verified release package
+    runs-on: ubuntu-latest
+    needs:
+      - rust-quality
+      - flutter-quality
+      - model-host-quality
+      - local-ai
+      - android
+      - macos
+      - windows
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: release-assets
+          merge-multiple: true
+      - name: Create checksums
+        working-directory: release-assets
+        run: sha256sum ScreenPilot-* > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: screenpilot-v0.3.2-verified-release
+          path: release-assets
+          if-no-files-found: error
+          retention-days: 3
