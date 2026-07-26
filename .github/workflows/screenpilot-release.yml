@@ -293,8 +293,8 @@ jobs:
         working-directory: .
         env:
           HF_HUB_OFFLINE: "1"
-          TRANSFORMERS_OFFLINE: "1"
           SCREENPILOT_MOONDREAM_MODEL_DIR: ${{ github.workspace }}/.screenpilot-bundled-models/moondream
+          SCREENPILOT_LLAMA_RUNTIME_DIR: ${{ github.workspace }}/.screenpilot-bundled-models/llama.cpp
           SCREENPILOT_OCR_DETECTION_MODEL_DIR: ${{ github.workspace }}/.screenpilot-bundled-models/paddleocr/detection
           SCREENPILOT_OCR_RECOGNITION_MODEL_DIR: ${{ github.workspace }}/.screenpilot-bundled-models/paddleocr/recognition
         run: >-
@@ -394,8 +394,8 @@ jobs:
         working-directory: .
         run: |
           $env:HF_HUB_OFFLINE = "1"
-          $env:TRANSFORMERS_OFFLINE = "1"
           $env:SCREENPILOT_MOONDREAM_MODEL_DIR = Join-Path $env:SCREENPILOT_BUNDLED_MODELS_DIR "moondream"
+          $env:SCREENPILOT_LLAMA_RUNTIME_DIR = Join-Path $env:SCREENPILOT_BUNDLED_MODELS_DIR "llama.cpp"
           $env:SCREENPILOT_OCR_DETECTION_MODEL_DIR = Join-Path $env:SCREENPILOT_BUNDLED_MODELS_DIR "paddleocr\detection"
           $env:SCREENPILOT_OCR_RECOGNITION_MODEL_DIR = Join-Path $env:SCREENPILOT_BUNDLED_MODELS_DIR "paddleocr\recognition"
           uv run `
