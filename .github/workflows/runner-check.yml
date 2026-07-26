@@ -1,0 +1,25 @@
+name: Free runner check
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Linux runner ready"
+
+  macos:
+    runs-on: macos-14
+    steps:
+      - run: echo "macOS runner ready"
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - run: Write-Output "Windows runner ready"
