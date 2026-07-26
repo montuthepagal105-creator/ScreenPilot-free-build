@@ -111,21 +111,21 @@ jobs:
       run:
         working-directory: services/model-host
     env:
-      UV_PROJECT_ENVIRONMENT: ${{ runner.temp }}/screenpilot-model-host-environment
-      UV_CACHE_DIR: ${{ runner.temp }}/screenpilot-uv-cache
-      UV_PYTHON_INSTALL_DIR: ${{ runner.temp }}/screenpilot-python
+      UV_PROJECT_ENVIRONMENT: ${{ github.workspace }}/.screenpilot-model-host-environment
+      UV_CACHE_DIR: ${{ github.workspace }}/.screenpilot-uv-cache
+      UV_PYTHON_INSTALL_DIR: ${{ github.workspace }}/.screenpilot-python
       UV_NO_CONFIG: "1"
       UV_NO_PROGRESS: "1"
       UV_HTTP_CONNECT_TIMEOUT: "30"
       UV_HTTP_TIMEOUT: "120"
       UV_HTTP_RETRIES: "5"
-      HF_HOME: ${{ runner.temp }}/screenpilot-models/huggingface
+      HF_HOME: ${{ github.workspace }}/.screenpilot-models/huggingface
       HF_HUB_DISABLE_TELEMETRY: "1"
       HF_HUB_DISABLE_XET: "1"
       HF_HUB_DOWNLOAD_TIMEOUT: "120"
       HF_HUB_ETAG_TIMEOUT: "30"
       HF_HUB_VERBOSITY: info
-      PADDLEX_HOME: ${{ runner.temp }}/screenpilot-models/paddlex
+      PADDLEX_HOME: ${{ github.workspace }}/.screenpilot-models/paddlex
       PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK: "1"
       PADDLE_PDX_MODEL_SOURCE: bos
       PYTHONUNBUFFERED: "1"
