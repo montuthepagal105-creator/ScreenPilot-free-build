@@ -256,7 +256,7 @@ jobs:
     runs-on: macos-14
     timeout-minutes: 360
     env:
-      SCREENPILOT_BUNDLED_MODELS_DIR: ${{ runner.temp }}/screenpilot-bundled-models
+      SCREENPILOT_BUNDLED_MODELS_DIR: ${{ github.workspace }}/.screenpilot-bundled-models
     defaults:
       run:
         working-directory: apps/screenpilot
@@ -293,9 +293,9 @@ jobs:
         env:
           HF_HUB_OFFLINE: "1"
           TRANSFORMERS_OFFLINE: "1"
-          SCREENPILOT_MOONDREAM_MODEL_DIR: ${{ runner.temp }}/screenpilot-bundled-models/moondream
-          SCREENPILOT_OCR_DETECTION_MODEL_DIR: ${{ runner.temp }}/screenpilot-bundled-models/paddleocr/detection
-          SCREENPILOT_OCR_RECOGNITION_MODEL_DIR: ${{ runner.temp }}/screenpilot-bundled-models/paddleocr/recognition
+          SCREENPILOT_MOONDREAM_MODEL_DIR: ${{ github.workspace }}/.screenpilot-bundled-models/moondream
+          SCREENPILOT_OCR_DETECTION_MODEL_DIR: ${{ github.workspace }}/.screenpilot-bundled-models/paddleocr/detection
+          SCREENPILOT_OCR_RECOGNITION_MODEL_DIR: ${{ github.workspace }}/.screenpilot-bundled-models/paddleocr/recognition
         run: >-
           uv run
           --project services/model-host
@@ -358,7 +358,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 360
     env:
-      SCREENPILOT_BUNDLED_MODELS_DIR: ${{ runner.temp }}/screenpilot-bundled-models
+      SCREENPILOT_BUNDLED_MODELS_DIR: ${{ github.workspace }}/.screenpilot-bundled-models
     defaults:
       run:
         working-directory: apps/screenpilot
@@ -387,7 +387,7 @@ jobs:
           --managed-python
           --locked
           python packaging/model-host/prepare_bundled_models.py
-          --output "${{ runner.temp }}/screenpilot-bundled-models"
+          --output "${{ github.workspace }}/.screenpilot-bundled-models"
       - name: Run real offline inference from bundled models
         shell: pwsh
         working-directory: .
