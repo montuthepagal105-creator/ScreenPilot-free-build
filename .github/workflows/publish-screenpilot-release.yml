@@ -1,0 +1,90 @@
+name: Publish verified ScreenPilot release
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_run_id:
+        description: Successful Build and verify ScreenPilot workflow run ID
+        required: true
+        default: "30253622370"
+      release_tag:
+        description: GitHub release tag
+        required: true
+        default: v0.4.0
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish:
+    name: Publish verified installers
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: screenpilot-v0.4.0-verified-release
+          path: release-assets
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.build_run_id }}
+
+      - name: Verify release assets
+        working-directory: release-assets
+        run: |
+          test -s ScreenPilot-macOS.app.zip
+          test -s ScreenPilot-Windows-Setup.exe
+          test -s ScreenPilot-Android.apk
+          test -s SHA256SUMS.txt
+          sha256sum --check SHA256SUMS.txt
+
+      - name: Write release notes
+        run: |
+          cat > release-notes.md <<'EOF'
+          ScreenPilot v0.4.0 is a local-first screen assistant.
+
+          The macOS and Windows packages physically include the open-source
+          PaddleOCR model files, Moondream GGUF weights, and CPU llama.cpp
+          runtimes. The application verifies those files, shows real setup
+          progress, requests screen-capture permission, and processes captured
+          frames locally. Model weights are not downloaded after installation.
+
+          First launch installs the free local Python/Paddle runtime dependencies.
+          No paid AI API is required. See SHA256SUMS.txt to verify downloads.
+
+          Notes:
+          - macOS is ad-hoc signed and not Apple-notarized. Use right-click, Open.
+          - Windows is not code-signed, so SmartScreen may show a warning.
+          - The Android APK is included, but Android does not support the same
+            unrestricted desktop screen-monitoring workflow.
+          - An iOS IPA is not provided because iOS does not permit an app to
+            continuously inspect the screens of other apps.
+
+          Verified by GitHub Actions build run 30253622370.
+          EOF
+
+      - name: Create or update release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.release_tag }}
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit "$TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "ScreenPilot v0.4.0" \
+              --notes-file release-notes.md
+          else
+            gh release create "$TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "ScreenPilot v0.4.0" \
+              --notes-file release-notes.md
+          fi
+
+          gh release upload "$TAG" \
+            release-assets/ScreenPilot-macOS.app.zip \
+            release-assets/ScreenPilot-Windows-Setup.exe \
+            release-assets/ScreenPilot-Android.apk \
+            release-assets/SHA256SUMS.txt \
+            --repo "$GITHUB_REPOSITORY" \
+            --clobber
