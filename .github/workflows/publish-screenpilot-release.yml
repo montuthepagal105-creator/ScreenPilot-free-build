@@ -10,7 +10,7 @@ on:
       release_tag:
         description: GitHub release tag
         required: true
-        default: v0.4.0
+        default: v0.4.1
 
 permissions:
   actions: read
@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: screenpilot-v0.4.0-verified-release
+          name: screenpilot-v0.4.1-verified-release
           path: release-assets
           github-token: ${{ github.token }}
           run-id: ${{ inputs.build_run_id }}
@@ -41,13 +41,17 @@ jobs:
       - name: Write release notes
         run: |
           cat > release-notes.md <<'EOF'
-          ScreenPilot v0.4.0 is a local-first screen assistant.
+          ScreenPilot v0.4.1 adds faster, clearer local screen warnings.
 
           The macOS and Windows packages physically include the open-source
-          PaddleOCR model files, Moondream GGUF weights, and CPU llama.cpp
+          PaddleOCR model files, Moondream GGUF weights, and local llama.cpp
           runtimes. The application verifies those files, shows real setup
           progress, requests screen-capture permission, and processes captured
           frames locally. Model weights are not downloaded after installation.
+
+          This release adds native desktop notifications for high-confidence
+          mistakes, schema-constrained Moondream output, smaller inference
+          images, shorter responses, and Metal acceleration on compatible Macs.
 
           First launch installs the free local Python/Paddle runtime dependencies.
           No paid AI API is required. See SHA256SUMS.txt to verify downloads.
@@ -60,7 +64,7 @@ jobs:
           - An iOS IPA is not provided because iOS does not permit an app to
             continuously inspect the screens of other apps.
 
-          Verified by GitHub Actions build run 30253622370.
+          Verified by GitHub Actions build run ${{ inputs.build_run_id }}.
           EOF
 
       - name: Create or update release
@@ -71,13 +75,13 @@ jobs:
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release edit "$TAG" \
               --repo "$GITHUB_REPOSITORY" \
-              --title "ScreenPilot v0.4.0" \
+              --title "ScreenPilot v0.4.1" \
               --notes-file release-notes.md
           else
             gh release create "$TAG" \
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
-              --title "ScreenPilot v0.4.0" \
+              --title "ScreenPilot v0.4.1" \
               --notes-file release-notes.md
           fi
 

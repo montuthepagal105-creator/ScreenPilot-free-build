@@ -15,6 +15,7 @@ on:
         options:
           - build
           - desktop
+          - quality
           - lock
 
 permissions:
@@ -49,7 +50,7 @@ jobs:
 
   rust-quality:
     name: Rust quality
-    if: inputs.operation == 'build'
+    if: inputs.operation == 'build' || inputs.operation == 'quality'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -73,7 +74,7 @@ jobs:
 
   flutter-quality:
     name: Flutter quality
-    if: inputs.operation == 'build'
+    if: inputs.operation == 'build' || inputs.operation == 'quality'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -104,7 +105,7 @@ jobs:
 
   model-host-quality:
     name: Model host quality
-    if: inputs.operation == 'build'
+    if: inputs.operation == 'build' || inputs.operation == 'quality'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -461,7 +462,7 @@ jobs:
         run: sha256sum ScreenPilot-* > SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: screenpilot-v0.4.0-verified-release
+          name: screenpilot-v0.4.1-verified-release
           path: release-assets
           if-no-files-found: error
           retention-days: 3
