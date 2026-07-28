@@ -462,7 +462,7 @@ jobs:
         run: sha256sum ScreenPilot-* > SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: screenpilot-v0.4.1-verified-release
+          name: screenpilot-v0.4.2-verified-release
           path: release-assets
           if-no-files-found: error
           retention-days: 3

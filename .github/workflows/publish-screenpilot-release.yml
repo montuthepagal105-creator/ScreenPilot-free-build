@@ -10,7 +10,7 @@ on:
       release_tag:
         description: GitHub release tag
         required: true
-        default: v0.4.1
+        default: v0.4.2
 
 permissions:
   actions: read
@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: screenpilot-v0.4.1-verified-release
+          name: screenpilot-v0.4.2-verified-release
           path: release-assets
           github-token: ${{ github.token }}
           run-id: ${{ inputs.build_run_id }}
@@ -41,7 +41,13 @@ jobs:
       - name: Write release notes
         run: |
           cat > release-notes.md <<'EOF'
-          ScreenPilot v0.4.1 adds faster, clearer local screen warnings.
+          ScreenPilot v0.4.2 fixes repeated macOS screen-recording permission
+          requests.
+
+          Screen recording access is now requested only after the user selects
+          Start monitoring. A completed denial is never cached, so ScreenPilot
+          rechecks macOS after access is granted instead of reopening the same
+          permission loop. The permission banner now includes Check again.
 
           The macOS and Windows packages physically include the open-source
           PaddleOCR model files, Moondream GGUF weights, and local llama.cpp
@@ -49,14 +55,17 @@ jobs:
           progress, requests screen-capture permission, and processes captured
           frames locally. Model weights are not downloaded after installation.
 
-          This release adds native desktop notifications for high-confidence
-          mistakes, schema-constrained Moondream output, smaller inference
-          images, shorter responses, and Metal acceleration on compatible Macs.
+          The release also includes native desktop notifications,
+          schema-constrained Moondream output, smaller inference images, shorter
+          responses, and Metal acceleration on compatible Macs.
 
-          First launch installs the free local Python/Paddle runtime dependencies.
-          No paid AI API is required. See SHA256SUMS.txt to verify downloads.
+          The free local Python/Paddle runtime is bundled with the desktop app.
+          No paid AI API or first-launch model download is required. See
+          SHA256SUMS.txt to verify downloads.
 
           Notes:
+          - Move the macOS app to Applications before granting Screen Recording
+            access so macOS records a stable application path.
           - macOS is ad-hoc signed and not Apple-notarized. Use right-click, Open.
           - Windows is not code-signed, so SmartScreen may show a warning.
           - The Android APK is included, but Android does not support the same
@@ -75,13 +84,13 @@ jobs:
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release edit "$TAG" \
               --repo "$GITHUB_REPOSITORY" \
-              --title "ScreenPilot v0.4.1" \
+              --title "ScreenPilot v0.4.2" \
               --notes-file release-notes.md
           else
             gh release create "$TAG" \
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
-              --title "ScreenPilot v0.4.1" \
+              --title "ScreenPilot v0.4.2" \
               --notes-file release-notes.md
           fi
 
