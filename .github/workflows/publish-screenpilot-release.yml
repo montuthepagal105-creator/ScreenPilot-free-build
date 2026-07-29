@@ -10,7 +10,7 @@ on:
       release_tag:
         description: GitHub release tag
         required: true
-        default: v0.4.2
+        default: v0.4.3
 
 permissions:
   actions: read
@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: screenpilot-v0.4.2-verified-release
+          name: screenpilot-v0.4.3-verified-release
           path: release-assets
           github-token: ${{ github.token }}
           run-id: ${{ inputs.build_run_id }}
@@ -41,13 +41,19 @@ jobs:
       - name: Write release notes
         run: |
           cat > release-notes.md <<'EOF'
-          ScreenPilot v0.4.2 fixes repeated macOS screen-recording permission
-          requests.
+          ScreenPilot v0.4.3 makes screen-capture permission handling
+          platform-correct on macOS, Windows, and Android.
 
-          Screen recording access is now requested only after the user selects
-          Start monitoring. A completed denial is never cached, so ScreenPilot
-          rechecks macOS after access is granted instead of reopening the same
-          permission loop. The permission banner now includes Check again.
+          Capture access is requested only after the user selects Start
+          monitoring. Completed denials and pending dialogs are recoverable and
+          never cached. Native platform guidance remains visible in the app,
+          and the permission banner includes Check again.
+
+          macOS performs a fresh screen-capture preflight after access changes.
+          Windows captures through its permissionless desktop API. Android now
+          continues directly from Usage Access into the system screen-share
+          consent dialog instead of returning an intermediate denial, and it
+          releases resources when Android stops the projection.
 
           The macOS and Windows packages physically include the open-source
           PaddleOCR model files, Moondream GGUF weights, and local llama.cpp
@@ -84,13 +90,13 @@ jobs:
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release edit "$TAG" \
               --repo "$GITHUB_REPOSITORY" \
-              --title "ScreenPilot v0.4.2" \
+              --title "ScreenPilot v0.4.3" \
               --notes-file release-notes.md
           else
             gh release create "$TAG" \
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
-              --title "ScreenPilot v0.4.2" \
+              --title "ScreenPilot v0.4.3" \
               --notes-file release-notes.md
           fi
 
