@@ -49,11 +49,12 @@ jobs:
           never cached. Native platform guidance remains visible in the app,
           and the permission banner includes Check again.
 
-          macOS performs a fresh screen-capture preflight after access changes.
-          Windows captures through its permissionless desktop API. Android now
-          continues directly from Usage Access into the system screen-share
-          consent dialog instead of returning an intermediate denial, and it
-          releases resources when Android stops the projection.
+          macOS uses already-granted screen-capture access immediately and falls
+          back to Apple's system display picker when ad-hoc signing leaves a stale
+          permission record. Windows captures through its permissionless desktop
+          API. Android now continues directly from Usage Access into the system
+          screen-share consent dialog instead of returning an intermediate denial,
+          and it releases resources when Android stops the projection.
 
           The macOS and Windows packages physically include the open-source
           PaddleOCR model files, Moondream GGUF weights, and local llama.cpp
