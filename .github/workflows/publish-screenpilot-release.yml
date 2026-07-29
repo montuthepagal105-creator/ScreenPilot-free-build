@@ -10,7 +10,7 @@ on:
       release_tag:
         description: GitHub release tag
         required: true
-        default: v0.4.3
+        default: v0.4.4
 
 permissions:
   actions: read
@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: screenpilot-v0.4.3-verified-release
+          name: screenpilot-v0.4.4-verified-release
           path: release-assets
           github-token: ${{ github.token }}
           run-id: ${{ inputs.build_run_id }}
@@ -41,20 +41,25 @@ jobs:
       - name: Write release notes
         run: |
           cat > release-notes.md <<'EOF'
-          ScreenPilot v0.4.3 makes screen-capture permission handling
-          platform-correct on macOS, Windows, and Android.
+          ScreenPilot v0.4.4 fixes the macOS state where Screen Recording is
+          enabled in System Settings but TCC still denies the running process.
 
           Capture access is requested only after the user selects Start
           monitoring. Completed denials and pending dialogs are recoverable and
           never cached. Native platform guidance remains visible in the app,
           and the permission banner includes Check again.
 
-          macOS uses already-granted screen-capture access immediately and falls
-          back to Apple's system display picker when ad-hoc signing leaves a stale
-          permission record. Windows captures through its permissionless desktop
-          API. Android now continues directly from Usage Access into the system
-          screen-share consent dialog instead of returning an intermediate denial,
-          and it releases resources when Android stops the projection.
+          macOS uses already-granted access immediately. When macOS reports that
+          access must be applied to a new process, ScreenPilot relaunches once and
+          automatically resumes monitoring. A persistent denial shows concise
+          recovery guidance instead of a raw CaptureUnavailableException or a
+          restart loop. The corrected build has a distinct bundle identity and
+          application name so stale entries from earlier ad-hoc builds cannot be
+          mistaken for the current app.
+
+          Windows continues to use its permissionless desktop capture API.
+          Android continues directly from Usage Access into the system screen-share
+          consent dialog and releases resources when Android stops the projection.
 
           The macOS and Windows packages physically include the open-source
           PaddleOCR model files, Moondream GGUF weights, and local llama.cpp
@@ -91,13 +96,13 @@ jobs:
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release edit "$TAG" \
               --repo "$GITHUB_REPOSITORY" \
-              --title "ScreenPilot v0.4.3" \
+              --title "ScreenPilot v0.4.4" \
               --notes-file release-notes.md
           else
             gh release create "$TAG" \
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
-              --title "ScreenPilot v0.4.3" \
+              --title "ScreenPilot v0.4.4" \
               --notes-file release-notes.md
           fi
 

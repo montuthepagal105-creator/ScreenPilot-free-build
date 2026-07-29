@@ -304,7 +304,18 @@ jobs:
           --no-sync
           python services/model-host/tests/verify_ai_install.py
       - name: Generate macOS wrapper
-        run: flutter create --project-name screenpilot --org ai.screenpilot --platforms=macos .
+        run: |
+          flutter create \
+            --project-name screenpilot \
+            --org ai.screenpilot \
+            --platforms=macos \
+            .
+          sed -i '' \
+            's/ai\.screenpilot\.screenpilot/ai.screenpilot.desktop.v044/g' \
+            macos/Runner/Configs/AppInfo.xcconfig
+          sed -i '' \
+            's/PRODUCT_NAME = screenpilot/PRODUCT_NAME = ScreenPilot/' \
+            macos/Runner/Configs/AppInfo.xcconfig
       - name: Allow loopback model networking
         run: |
           /usr/libexec/PlistBuddy \
@@ -331,7 +342,7 @@ jobs:
       - name: Embed core and package app
         working-directory: .
         run: |
-          APP="apps/screenpilot/build/macos/Build/Products/Release/screenpilot.app"
+          APP="apps/screenpilot/build/macos/Build/Products/Release/ScreenPilot.app"
           LIB="$APP/Contents/Frameworks/libscreenpilot_core.dylib"
           mkdir -p "$APP/Contents/Frameworks" dist
           cp target/universal/release/libscreenpilot_core.dylib "$LIB"
@@ -462,7 +473,7 @@ jobs:
         run: sha256sum ScreenPilot-* > SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: screenpilot-v0.4.3-verified-release
+          name: screenpilot-v0.4.4-verified-release
           path: release-assets
           if-no-files-found: error
           retention-days: 3
