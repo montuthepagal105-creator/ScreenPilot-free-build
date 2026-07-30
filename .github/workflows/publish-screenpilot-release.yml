@@ -6,11 +6,11 @@ on:
       build_run_id:
         description: Successful Build and verify ScreenPilot workflow run ID
         required: true
-        default: "30253622370"
+        default: "0"
       release_tag:
         description: GitHub release tag
         required: true
-        default: v0.4.4
+        default: v0.4.5
 
 permissions:
   actions: read
@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: screenpilot-v0.4.4-verified-release
+          name: screenpilot-v0.4.5-verified-release
           path: release-assets
           github-token: ${{ github.token }}
           run-id: ${{ inputs.build_run_id }}
@@ -41,39 +41,37 @@ jobs:
       - name: Write release notes
         run: |
           cat > release-notes.md <<'EOF'
-          ScreenPilot v0.4.4 fixes the macOS state where Screen Recording is
-          enabled in System Settings but TCC still denies the running process.
+          ScreenPilot v0.4.5 makes the captured display the source of truth.
+          The monitor now reads the entire selected display locally instead of
+          presenting the foreground application as the screen summary.
+
+          PaddleOCR runs first against full-display pixels. Clear visible text
+          is surfaced immediately, and high-confidence visible errors or dialogs
+          skip the slower visual-model path. This makes common desktop frames and
+          visible failures respond much faster while keeping Moondream available
+          for sparse visual-only screens. Unreliable or malformed Moondream
+          completions fall back to local OCR evidence instead of emitting a vague
+          or unrelated summary.
+
+          A visible application-memory alert now creates a precise local
+          notification and a high-priority suggestion. Other suggestions still
+          require explicit visible evidence and remain on-device.
+
+          The overview has been redesigned as a display monitor: it labels the
+          complete capture, shows visible errors and dialogs prominently, and
+          places foreground-app and window metadata in secondary context.
 
           Capture access is requested only after the user selects Start
-          monitoring. Completed denials and pending dialogs are recoverable and
-          never cached. Native platform guidance remains visible in the app,
-          and the permission banner includes Check again.
-
-          macOS uses already-granted access immediately. When macOS reports that
-          access must be applied to a new process, ScreenPilot relaunches once and
-          automatically resumes monitoring. A persistent denial shows concise
-          recovery guidance instead of a raw CaptureUnavailableException or a
-          restart loop. The corrected build has a distinct bundle identity and
-          application name so stale entries from earlier ad-hoc builds cannot be
-          mistaken for the current app.
-
-          Windows continues to use its permissionless desktop capture API.
-          Android continues directly from Usage Access into the system screen-share
-          consent dialog and releases resources when Android stops the projection.
+          monitoring. macOS relaunches once when TCC requires a new process, then
+          automatically resumes monitoring. Windows continues to use its desktop
+          capture API, and Android continues through the system screen-share
+          consent dialog.
 
           The macOS and Windows packages physically include the open-source
           PaddleOCR model files, Moondream GGUF weights, and local llama.cpp
-          runtimes. The application verifies those files, shows real setup
-          progress, requests screen-capture permission, and processes captured
-          frames locally. Model weights are not downloaded after installation.
-
-          The release also includes native desktop notifications,
-          schema-constrained Moondream output, smaller inference images, shorter
-          responses, and Metal acceleration on compatible Macs.
-
-          The free local Python/Paddle runtime is bundled with the desktop app.
-          No paid AI API or first-launch model download is required. See
-          SHA256SUMS.txt to verify downloads.
+          runtimes. The application verifies those files, shows setup progress,
+          and processes captured frames locally. Model weights are not downloaded
+          after installation, and no paid AI API is required.
 
           Notes:
           - Move the macOS app to Applications before granting Screen Recording
@@ -96,13 +94,13 @@ jobs:
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release edit "$TAG" \
               --repo "$GITHUB_REPOSITORY" \
-              --title "ScreenPilot v0.4.4" \
+              --title "ScreenPilot v0.4.5" \
               --notes-file release-notes.md
           else
             gh release create "$TAG" \
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
-              --title "ScreenPilot v0.4.4" \
+              --title "ScreenPilot v0.4.5" \
               --notes-file release-notes.md
           fi
 

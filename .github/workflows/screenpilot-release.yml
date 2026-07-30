@@ -311,7 +311,7 @@ jobs:
             --platforms=macos \
             .
           sed -i '' \
-            's/ai\.screenpilot\.screenpilot/ai.screenpilot.desktop.v044/g' \
+            's/ai\.screenpilot\.screenpilot/ai.screenpilot.desktop.v045/g' \
             macos/Runner/Configs/AppInfo.xcconfig
           sed -i '' \
             's/PRODUCT_NAME = screenpilot/PRODUCT_NAME = ScreenPilot/' \
@@ -473,7 +473,7 @@ jobs:
         run: sha256sum ScreenPilot-* > SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: screenpilot-v0.4.4-verified-release
+          name: screenpilot-v0.4.5-verified-release
           path: release-assets
           if-no-files-found: error
           retention-days: 3
