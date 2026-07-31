@@ -353,15 +353,40 @@ jobs:
           codesign --force --deep --sign - "$APP"
           ditto -c -k --sequesterRsrc --keepParent "$APP" \
             dist/ScreenPilot-macOS.app.zip
-          SIZE="$(stat -f%z dist/ScreenPilot-macOS.app.zip)"
-          if [[ "$SIZE" -ge 2147483648 ]]; then
-            echo "macOS release asset exceeds GitHub's 2 GiB limit." >&2
-            exit 1
-          fi
+          mkdir -p dist/dmg-contents
+          ditto "$APP" dist/dmg-contents/ScreenPilot.app
+          ln -s /Applications dist/dmg-contents/Applications
+          hdiutil create \
+            -volname "ScreenPilot" \
+            -srcfolder dist/dmg-contents \
+            -ov \
+            -format UDZO \
+            dist/ScreenPilot-macOS.dmg
+          for ASSET in dist/ScreenPilot-macOS.app.zip dist/ScreenPilot-macOS.dmg; do
+            SIZE="$(stat -f%z "$ASSET")"
+            if [[ "$SIZE" -ge 2147483648 ]]; then
+              echo "macOS release asset exceeds GitHub's 2 GiB limit: $ASSET" >&2
+              exit 1
+            fi
+          done
+      - name: Verify macOS installer image
+        working-directory: .
+        run: |
+          MOUNT_POINT="$(mktemp -d)"
+          hdiutil attach -nobrowse -readonly \
+            -mountpoint "$MOUNT_POINT" dist/ScreenPilot-macOS.dmg
+          test -d "$MOUNT_POINT/ScreenPilot.app"
+          test -L "$MOUNT_POINT/Applications"
+          codesign --verify --deep --strict --verbose=2 \
+            "$MOUNT_POINT/ScreenPilot.app"
+          hdiutil detach "$MOUNT_POINT"
+          rmdir "$MOUNT_POINT"
       - uses: actions/upload-artifact@v4
         with:
           name: release-macos
-          path: dist/ScreenPilot-macOS.app.zip
+          path: |
+            dist/ScreenPilot-macOS.app.zip
+            dist/ScreenPilot-macOS.dmg
           if-no-files-found: error
           retention-days: 3
 
@@ -473,7 +498,7 @@ jobs:
         run: sha256sum ScreenPilot-* > SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: screenpilot-v0.4.5-verified-release
+          name: screenpilot-v0.4.6-verified-release
           path: release-assets
           if-no-files-found: error
           retention-days: 3

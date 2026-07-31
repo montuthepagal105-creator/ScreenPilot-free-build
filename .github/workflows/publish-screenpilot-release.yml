@@ -10,7 +10,7 @@ on:
       release_tag:
         description: GitHub release tag
         required: true
-        default: v0.4.5
+        default: v0.4.6
 
 permissions:
   actions: read
@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: screenpilot-v0.4.5-verified-release
+          name: screenpilot-v0.4.6-verified-release
           path: release-assets
           github-token: ${{ github.token }}
           run-id: ${{ inputs.build_run_id }}
@@ -33,6 +33,7 @@ jobs:
         working-directory: release-assets
         run: |
           test -s ScreenPilot-macOS.app.zip
+          test -s ScreenPilot-macOS.dmg
           test -s ScreenPilot-Windows-Setup.exe
           test -s ScreenPilot-Android.apk
           test -s SHA256SUMS.txt
@@ -41,9 +42,10 @@ jobs:
       - name: Write release notes
         run: |
           cat > release-notes.md <<'EOF'
-          ScreenPilot v0.4.5 makes the captured display the source of truth.
-          The monitor now reads the entire selected display locally instead of
-          presenting the foreground application as the screen summary.
+          ScreenPilot v0.4.6 places the permitted display capture at the center
+          of the monitor. The dashboard now shows the real in-memory display
+          image being analyzed, with visible errors, OCR evidence, and
+          foreground context separated clearly.
 
           PaddleOCR runs first against full-display pixels. Clear visible text
           is surfaced immediately, and high-confidence visible errors or dialogs
@@ -57,9 +59,9 @@ jobs:
           notification and a high-priority suggestion. Other suggestions still
           require explicit visible evidence and remain on-device.
 
-          The overview has been redesigned as a display monitor: it labels the
-          complete capture, shows visible errors and dialogs prominently, and
-          places foreground-app and window metadata in secondary context.
+          The overview has been redesigned as a live display monitor. Raw image
+          data is held only in memory, refreshed from the full display, and
+          cleared immediately for private or ignored frames.
 
           Capture access is requested only after the user selects Start
           monitoring. macOS relaunches once when TCC requires a new process, then
@@ -74,9 +76,10 @@ jobs:
           after installation, and no paid AI API is required.
 
           Notes:
-          - Move the macOS app to Applications before granting Screen Recording
-            access so macOS records a stable application path.
-          - macOS is ad-hoc signed and not Apple-notarized. Use right-click, Open.
+          - The macOS DMG is the simple installer: open it and drag ScreenPilot
+            into Applications before granting Screen Recording access.
+          - macOS is ad-hoc signed and not Apple-notarized. Control-click the
+            app once and choose Open if macOS asks for confirmation.
           - Windows is not code-signed, so SmartScreen may show a warning.
           - The Android APK is included, but Android does not support the same
             unrestricted desktop screen-monitoring workflow.
@@ -94,18 +97,19 @@ jobs:
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release edit "$TAG" \
               --repo "$GITHUB_REPOSITORY" \
-              --title "ScreenPilot v0.4.5" \
+              --title "ScreenPilot v0.4.6" \
               --notes-file release-notes.md
           else
             gh release create "$TAG" \
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
-              --title "ScreenPilot v0.4.5" \
+              --title "ScreenPilot v0.4.6" \
               --notes-file release-notes.md
           fi
 
           gh release upload "$TAG" \
             release-assets/ScreenPilot-macOS.app.zip \
+            release-assets/ScreenPilot-macOS.dmg \
             release-assets/ScreenPilot-Windows-Setup.exe \
             release-assets/ScreenPilot-Android.apk \
             release-assets/SHA256SUMS.txt \
